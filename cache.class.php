@@ -1,8 +1,10 @@
 <?php
 /*
  * Project      : PHP Cache Class
+ * Version      : 1.1
  * Author       : Hardik Choudhary (ThinTake)
  * Author URL   : https://thintake.in
+ * Class URL    : https://github.com/hardik-choudhary/php-caching
  * License      : GNU GPLv3
  */
 
@@ -19,10 +21,10 @@ class Cache
     public ?string $cacheDirectory = NULL;
 
     /**
-     * Sub folder in cacheDirectory
+     * Sub folder in cacheDirectory optional
      * @var string|null
      */
-    public ?string $currentFolder = NULL;
+    public ?string $subFolder = NULL;
 
     /**
      * Cache constructor.
@@ -36,14 +38,15 @@ class Cache
     }
 
     /**
-     * @param string $currentFolder
+     * Set sub folder in cache directory. Like: {cacheDirectory}/{subFolder}, "cache/pages-cache"
+     * @param string $subFolder
      */
-    public function setCurrentFolder(string $currentFolder): void
+    public function setSubFolder(string $subFolder): void
     {
-        $this->currentFolder = $currentFolder;
+        $this->subFolder = $subFolder;
 
-        $this->createDirectory("{$this->cacheDirectory}/{$this->currentFolder}");
-        // $this->createDefaultFiles("{$this->cacheDirectory}/{$this->currentFolder}");
+        $this->createDirectory($this->cacheDirectory . DIRECTORY_SEPARATOR . $this->subFolder);
+        // $this->createDefaultFiles($this->cacheDirectory . DIRECTORY_SEPARATOR . $this->subFolder);
     }
 
     /**
@@ -56,15 +59,33 @@ class Cache
     public function read(string $cacheName, int $maxAge = 0, bool $deleteExpired = TRUE): ?string
     {
         $cacheFile = $this->getCachePath($cacheName);
+        if($this->checkCache($cacheName, $maxAge, $deleteExpired)){
+            return file_get_contents($cacheFile);
+        }
+        return NULL;
+    }
+
+
+    /**
+     * Check is cache exist or not
+     *
+     * @param string $cacheName String that was used while creating cache.
+     * @param int $maxAge (in Seconds). Return NULL if file older then these seconds. Default: 0, No limit
+     * @param bool $deleteExpired Delete cache if file age is more then maxAge. Default: TRUE
+     * @return bool
+     */
+    public function checkCache(string $cacheName, int $maxAge = 0, bool $deleteExpired = TRUE) :bool
+    {
+        $cacheFile = $this->getCachePath($cacheName);
         if (file_exists($cacheFile)) {
             if($maxAge == 0 || (time() - filemtime($cacheFile)) <= $maxAge){
-                return file_get_contents($cacheFile);
+                return TRUE;
             }
             elseif($deleteExpired){
                 $this->delete($cacheName);
             }
         }
-        return NULL;
+        return FALSE;
     }
 
     /**
@@ -78,15 +99,6 @@ class Cache
         $handle     = fopen($cacheFile, 'a');
         fwrite($handle, $content);
         fclose($handle);
-    }
-
-    /**
-     * Delete cache file
-     * @param string $cacheName
-     */
-    public function delete(string $cacheName) :void
-    {
-        @unlink($this->getCachePath($cacheName));
     }
 
     /**
@@ -108,13 +120,13 @@ class Cache
      */
     private function createDefaultFiles(string $directory) :void
     {
-        if (!file_exists("{$directory}/.htaccess")) {
-            $f = @fopen("{$directory}/.htaccess", "a+");
+        if (!file_exists($directory . DIRECTORY_SEPARATOR . "htaccess")) {
+            $f = @fopen($directory . DIRECTORY_SEPARATOR . "htaccess", "a+");
             @fwrite($f, "deny from all");
             @fclose($f);
         }
-        if (!file_exists("{$directory}/index.html")) {
-            $f = @fopen("{$directory}/index.html", "a+");
+        if (!file_exists($directory . DIRECTORY_SEPARATOR . "index.html")) {
+            $f = @fopen($directory . DIRECTORY_SEPARATOR . "index.html", "a+");
             @fclose($f);
         }
     }
@@ -124,10 +136,78 @@ class Cache
      * @param string $cacheName String that was used while creating cache
      * @return string
      */
-    private function getCachePath(string $cacheName) :string
+    public function getCachePath(string $cacheName) :string
     {
-        $SubFolder = ($this->currentFolder != NULL)? "/{$this->currentFolder}": '';
-        return "{$this->cacheDirectory}{$SubFolder}/". hash('sha1', $cacheName) .".cache";
+        return $this->getCacheDir() . DIRECTORY_SEPARATOR . hash('sha1', $cacheName) .".cache";
     }
 
+    /**
+     * Get current cache directory with selected
+     * @return string
+     */
+    public function getCacheDir(): string
+    {
+        return ($this->subFolder != NULL)? $this->cacheDirectory . DIRECTORY_SEPARATOR . $this->subFolder: $this->cacheDirectory;
+    }
+
+    /**
+     * Delete cache single file
+     * @param string $cacheName
+     */
+    public function delete(string $cacheName) :void
+    {
+        unlink($this->getCachePath($cacheName));
+    }
+
+    /**
+     * Clear specific cache.
+     * @param int $maxAge (in Seconds). Delete all files older then these seconds. Default: 0, Clear All Files
+     */
+    public function clear(int $maxAge = 0) :void
+    {
+        $cacheDir = $this->getCacheDir();
+        foreach (array_diff(scandir($cacheDir), array('.', '..', '.htaccess', 'index.html')) as $file){
+            $cacheFile = $cacheDir . DIRECTORY_SEPARATOR . $file;
+            if(is_file($cacheFile) && ($maxAge == 0 || (time() - filemtime($cacheFile)) >= $maxAge)){
+                unlink($cacheFile);
+            }
+        }
+    }
+
+    /**
+     * Clear all cache files
+     */
+    public function clearAll() :bool
+    {
+        return $this->deleteDirectory($this->cacheDirectory);
+    }
+
+    /**
+     * Delete a directory
+     * @param $dir
+     * @return bool
+     */
+    private function deleteDirectory($dir):bool
+    {
+        if (!file_exists($dir)) {
+            return true;
+        }
+
+        if (!is_dir($dir)) {
+            return unlink($dir);
+        }
+
+        foreach (scandir($dir) as $item) {
+            if ($item == '.' || $item == '..') {
+                continue;
+            }
+
+            if (!$this->deleteDirectory($dir . DIRECTORY_SEPARATOR . $item)) {
+                return false;
+            }
+
+        }
+
+        return rmdir($dir);
+    }
 }
