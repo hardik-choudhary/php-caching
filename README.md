@@ -1,2 +1,2 @@
 # php-caching
- PHP Caching Class
+ A light, simple and powerful PHP Cache Class that uses the filesystem for caching.
