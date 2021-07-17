@@ -6,6 +6,8 @@
  * Author URL   : https://thintake.in
  * Class URL    : https://github.com/hardik-choudhary/php-caching
  * License      : GNU GPLv3
+ * 
+ * This class works on PHP 7.4.0 or higher (Minimum PHP version 7.4 is required)
  */
 
 
