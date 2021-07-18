@@ -122,8 +122,8 @@ class Cache
      */
     private function createDefaultFiles($directory)
     {
-        if (!file_exists($directory . DIRECTORY_SEPARATOR . "htaccess")) {
-            $f = @fopen($directory . DIRECTORY_SEPARATOR . "htaccess", "a+");
+        if (!file_exists($directory . DIRECTORY_SEPARATOR . ".htaccess")) {
+            $f = @fopen($directory . DIRECTORY_SEPARATOR . ".htaccess", "a+");
             @fwrite($f, "deny from all");
             @fclose($f);
         }
