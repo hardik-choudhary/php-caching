@@ -98,9 +98,7 @@ class Cache
     public function write($cacheName, $content)
     {
         $cacheFile  = $this->getCachePath($cacheName);
-        $handle     = fopen($cacheFile, 'a');
-        fwrite($handle, $content);
-        fclose($handle);
+        file_put_contents($cacheFile, $content);
     }
 
     /**
@@ -194,7 +192,6 @@ class Cache
         if (!file_exists($dir)) {
             return true;
         }
-
         if (!is_dir($dir)) {
             return unlink($dir);
         }
@@ -203,13 +200,25 @@ class Cache
             if ($item == '.' || $item == '..') {
                 continue;
             }
-
             if (!$this->deleteDirectory($dir . DIRECTORY_SEPARATOR . $item)) {
                 return false;
             }
-
         }
-
         return rmdir($dir);
+    }
+
+    /**
+     * Gets cache modification time
+     *
+     * @param string $cacheName String that was used while creating cache.
+     * @return int|null
+     */
+    public function getTime($cacheName)
+    {
+        $cacheFile = $this->getCachePath($cacheName);
+        if (file_exists($cacheFile)) {
+            return filemtime($cacheFile);
+        }
+        return FALSE;
     }
 }
