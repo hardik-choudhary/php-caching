@@ -156,7 +156,7 @@ class Cache
      */
     public function delete($cacheName)
     {
-        unlink($this->getCachePath($cacheName));
+        @unlink($this->getCachePath($cacheName));
     }
 
     /**
